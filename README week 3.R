@@ -1,4 +1,4 @@
-#README week 3
+#README week3
 
 rm(list = ls())
 

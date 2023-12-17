@@ -1,4 +1,4 @@
-#README week5 
+#README week 5 
 rm(list = ls())
 
 library(MASS)

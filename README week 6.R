@@ -1,4 +1,4 @@
-#README week 6
+#README week6
 oj <- read.csv("C:\\Users\\deeni\\Downloads\\oj.csv")
 
 #simple OLS
