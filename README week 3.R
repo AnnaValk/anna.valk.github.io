@@ -56,6 +56,7 @@ dim(email)
 colnames(email) 
 
 #logistic regression of spam on all variables, logistic because family is binomial
+#if it is not a linear regression, should always specify the family of relationship that is happening
 glm(spam ~ ., data=email, family='binomial')
 #fit regression in spammy
 spammy <- glm(spam ~ ., data=email, family='binomial')
@@ -73,15 +74,44 @@ predict(spammy, newdata = email[c(1,4000),], type="response")
 
 #EXPIRIMENT: see if results with last 600 responses
 predict(spammy, newdata = email[c(4000,4600),], type="response")
-#the variable 4000 of course shows the same predictions
+#the variable 4000 of course shows the same predictions, the rest shows the predictions of the additional 600 variables
 
 #shows the summary of the regressions
 summary(spammy)$deviance
 summary(spammy)$null.deviance
 
-#calculate R2 in the program, by divide deviance by null deviance
+#calculate R2 in the program for logistical regressions, by divide deviance by null deviance
 D <- summary(spammy)$deviance; D
 D0 <- summary(spammy)$null.deviance; D0
 R2 <- 1 - D/D0; R2
+# r2 (generalized) = 0.749
+#deviance is the measured difference from the fitted model to the saturated model. 
+#null deviance shows the goodness of fit when only considering the intercept Bo
+# R2 here is not the unsual interpetation but actually the porportion of deviance reduced by adding predictors. 
+# or the percentage of Y varianece explained by X
+# 0.749 is a pretty high R2, so pretty strong regression. 
 
+
+# try to get other form of Rsquared. 
+residuals <- residuals(spammy)
+total_var <- sum((spammy$model$'log(sales)' - mean(spammy$model$'log(sales)'))^2)
+residual_var <- sum(residuals^2)
+
+R2_linear <- 1 - (residual_var / total_var)
+R2_linear
+#does not work because it is not a linear regression I think
+
+# try another way
+residuals <- residuals(spammy)
+total_var <- sum((spammy$model$spam - mean(spammy$model$spam))^2)
+residual_var <- sum(residuals^2)
+
+if (total_var != 0) {
+  R2_linear <- 1 - (residual_var / total_var)
+  R2_linear
+} else {
+  warning("Total variance is zero. R-squared is not defined.")
+}
+#answer now is -0.41, which is wierd for an Rsquared, idk if this is a trustworthy method. 
+#I think this is just not possible. But good to see how it would work. 
 

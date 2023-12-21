@@ -102,7 +102,8 @@ credx <- sparse.model.matrix(Default ~ . ^ 2, data=naref(credit)); colnames(cred
   plot(credscore$gamlr)
   plot(credscore)
   
-  #looks like same plots as before
+  #looks like same plots as before, in the last lecture with Lasso, because this algorithm also uses lasso in the classification
+  
   
   
 #EXPIRIMENT; what if the levels used only use "poor"
@@ -157,86 +158,74 @@ credx <- sparse.model.matrix(Default ~ . ^ 2, data=naref(credit)); colnames(cred
   
   #looks like nothing changes
   
-  #creates thresholds for the matrix
-  rule <- 1/5 # move this around to see how these change
-  sum( (pred>rule)[default==0] )/sum(pred>rule) ## false positive rate at 1/5 rule
-  sum( (pred<rule)[default==1] )/sum(pred<rule) ## false negative rate at 1/5 rule
-  
-  sum( (pred>rule)[default==1] )/sum(default==1) ## sensitivity
-  
-  sum( (pred<rule)[default==0] )/sum(default==0) ## specificity
   
   
+  # Creates thresholds for the matrix
+  rule <- 1/5  # Move this around to see how these change
   
-  #using the out of sample evaluation, by using half the data to make a prediction
-  # refit the model using only 1/2 of data
-  test <- sample.int(1000,500)
-  credhalf <- gamlr(credx[-test,], default[-test], family="binomial")
-  predoos <- predict(credhalf, credx[test,], type="response")
+  # False positive rate at 1/5 rule
+  sum((pred > rule)[default == 0]) / sum(pred > rule)
+  
+  # False negative rate at 1/5 rule
+  sum((pred < rule)[default == 1]) / sum(pred < rule)
+  
+  # Sensitivity
+  sum((pred > rule)[default == 1]) / sum(default == 1)
+  
+  # Specificity
+  sum((pred < rule)[default == 0]) / sum(default == 0)
+  
+  # Out-of-sample evaluation
+  test <- sample.int(1000, 500)
+  credhalf <- gamlr(credx[-test, ], default[-test], family = "binomial")
+  predoos <- predict(credhalf, credx[test, ], type = "response")
   defaultoos <- default[test]
   
-  source("roc.R")
-  #this does not run and idk why
+  # ROC Curve (Receiver Operating Characteristic)
+  source("roc.R")  # This might be the source of the error
   
-  png(file="ROCCurve.png", width=600, height=350)
-  par(mai=c(.9,.9,.2,.1), mfrow=c(1,2))
-  roc(p=pred, y=default, bty="n", main="in-sample")
-  ## our 1/5 rule cutoff
-  points(x= 1-mean((pred<.2)[default==0]), 
-         y=mean((pred>.2)[default==1]), 
-         cex=1.5, pch=20, col='red') 
-  ## a standard `max prob' (p=.5) rule
-  points(x= 1-mean((pred<.5)[default==0]), 
-         y=mean((pred>.5)[default==1]), 
-         cex=1.5, pch=20, col='blue') 
-  legend("bottomright",fill=c("red","blue"),
-         legend=c("p=1/5","p=1/2"),bty="n",title="cutoff")
-  roc(p=predoos, y=defaultoos, bty="n", main="out-of-sample")
-  ## our 1/5 rule cutoff
-  points(x= 1-mean((predoos<.2)[defaultoos==0]), 
-         y=mean((predoos>.2)[defaultoos==1]), 
-         cex=1.5, pch=20, col='red') 
-  ## a standard `max prob' (p=.5) rule
-  points(x= 1-mean((predoos<.5)[defaultoos==0]), 
-         y=mean((predoos>.5)[defaultoos==1]), 
-         cex=1.5, pch=20, col='blue') 
+  # Plot ROC Curve for in-sample
+  roc(p = pred, y = default, bty = "n", main = "in-sample")
+  
+  # Our 1/5 rule cutoff
+  points(x = 1 - mean((pred < 0.2)[default == 0]),
+         y = mean((pred > 0.2)[default == 1]),
+         cex = 1.5, pch = 20, col = 'red')
+  
+  # A standard 'max prob' (p=0.5) rule
+  points(x = 1 - mean((pred < 0.5)[default == 0]),
+         y = mean((pred > 0.5)[default == 1]),
+         cex = 1.5, pch = 20, col = 'blue')
+  
+  # Legend for in-sample ROC
+  legend("bottomright", fill = c("red", "blue"),
+         legend = c("p=1/5", "p=1/2"), bty = "n", title = "cutoff")
+  
+  # ROC Curve for out-of-sample
+  roc(p = predoos, y = defaultoos, bty = "n", main = "out-of-sample")
+  
+  # Our 1/5 rule cutoff
+  points(x = 1 - mean((predoos < 0.2)[defaultoos == 0]),
+         y = mean((predoos > 0.2)[defaultoos == 1]),
+         cex = 1.5, pch = 20, col = 'red')
+  
+  # A standard 'max prob' (p=0.5) rule
+  points(x = 1 - mean((predoos < 0.5)[defaultoos == 0]),
+         y = mean((predoos > 0.5)[defaultoos == 1]),
+         cex = 1.5, pch = 20, col = 'blue')
+  
+  # Save ROC Curve plot to a file
+  png(file = "ROCCurve.png", width = 600, height = 350)
+  
+  
+  # Close the PNG file
   dev.off()
   
-  par(mai=c(.8,.8,.1,.1))
-  plot(factor(Default) ~ history, data=credit, col=c(8,2), ylab="Default")
+  # Plotting factor levels of 'Default' against 'history' in the 'credit' dataset
+  par(mai = c(.8, .8, .1, .1))
+  plot(factor(Default) ~ history, data = credit, col = c(8, 2), ylab = "Default")
   
   
-  library(glmnet)
-  xfgl <- sparse.model.matrix(type~.*RI, data=fgl)[,-1] #Design matrix includes chemical composition variables and all their interactions with refractive index (RI).
-  gtype <- fgl$type
-  glassfit <- cv.glmnet(xfgl, gtype, family="multinomial") #cross validation experiments
-  glassfit
-  
-  plot(glassfit)
-  
-  par(mfrow=c(2,3), mai=c(.6,.6,.4,.4)) 
-  plot(glassfit$glm, xvar="lambda")
-  
-  B  <- coef(glassfit, select="min"); B ## extract coefficients
-  B <- do.call(cbind, B) 
-  colnames(B) <- levels(gtype) # column names dropped in previous command. This command adds them back.
-  
-  DeltaBMg <- B["Mg", "WinNF"] - B["Mg", "WinF"]; DeltaBMg; #B is a matrix. Fixed Row. Vary Columns. k is Mg, a is WinNF, b is WinF. 
-  exp(DeltaBMg);
-  1 - exp(DeltaBMg)
-  
-  
-  probfgl <- predict(glassfit, xfgl, type="response"); dim(probfgl); head(probfgl,n=2); tail(probfgl,n=2)
-  #gives in-sample probabilities. Note: this is nXKX1 array. Need nXK array. To convert: 
-  probfgl <- drop(probfgl); #use dim(probfgl) to check dim is 214 by 6
-  n <- nrow(xfgl)
-  trueclassprobs <- probfgl[cbind(1:n, gtype)]; head(trueclassprobs,n=3); tail(trueclassprobs,n=3) 
-  #for each obs there is one probability that corresponds to realized shard for that obs. Last command extracts those probabilities. 
-  #Note use of a matrix to index a matrix.
-  
-  
-  plot(trueclassprobs ~ gtype, col="lavender", varwidth=TRUE,
-       xlab="glass type", ylab="prob( true class )") 
   
   
   

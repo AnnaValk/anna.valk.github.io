@@ -8,6 +8,12 @@ View(CEO_Diary)
 #showing data type
 apply(CEO_Diary,2,class)
 
+#showing first 15 observations
+CEO_Diary[1:15,c(1:5,37, 39, 40)] 
+
+#EXPIRIMENT: looking at different variables: id, coo, cao, clients, only looking at first five
+CEO_Diary[1:5, c(1, 13, 14, 19)]
+
 #summary of first 5 columns of data set
 summary(CEO_Diary[1:5])
 

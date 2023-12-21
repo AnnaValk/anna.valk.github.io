@@ -17,21 +17,29 @@ presid <- log(oj$price) - phat
 residfit <- lm(log(sales) ~ presid, data=oj)
 coef(basefit)
 
-#Open the data and make some  new variables
+# Open the data and make some new variables
 data <- read.table("C:\\Users\\deeni\\Downloads\\abortion.dat", skip=1, sep="\t")
+# Assign names to the columns of the 'data' dataframe
 names(data) <- c("state","year","pop","y_viol","y_prop","y_murd",
                  "a_murd","a_viol","a_prop",'prison','police',
                  'ur','inc','pov','afdc','gun','beer')
-data <- data[!(data$state%in%c(2,9,12)),] # AK, DC, HA are strange places
-data <- data[data$year>84 & data$year<98,] # incomplete data outside these years
+# Remove rows where the 'state' column is equal to 2, 9, or 12
+data <- data[!(data$state %in% c(2,9,12)),]
+# Remove rows where the 'year' column is not between 85 and 97 (inclusive)
+data <- data[data$year > 84 & data$year < 98,]
+# Take the natural logarithm of the 'pop' column and assign it to 'pop'
 data$pop <- log(data$pop)
+
+# Create a new variable 't' representing the time difference from the year 1985
 t <- data$year - 85
-s <- factor(data$state) ## states are numbered alphabetically
+# Create a new factor variable 's' from the 'state' column
+s <- factor(data$state)
+# Create a new dataframe 'controls' containing specific columns from 'data'
 controls <- data.frame(data[,c(3,10:17)])
 
 
+
 ## y is de-trended log crime rate, a is as described below
-## note we also have violent and property crime versions
 #detrended log crime rates
 y <- data$y_murd
 
@@ -138,7 +146,7 @@ CI #90% confidence interval for probability that Edmonton scored the goal is
 
 #part 2
 library(Matrix)
-data <- read.table("../Data/abortion.dat", skip=1, sep="\t")
+data <- read.table("C:\\Users\\deeni\\Downloads\\abortion (1).dat", skip=1, sep="\t")
 names(data) <- c("state","year","pop","y_viol","y_prop","y_murd",
                  "a_murd","a_viol","a_prop",'prison','police',
                  'ur','inc','pov','afdc','gun','beer')
@@ -152,7 +160,7 @@ controls <- data.frame(data[,c(3,10:17)])
 ## note we also have violent and property crime versions
 y <- data$y_murd
 d <- data$a_murd
-cell <- read.csv("../Data/us_cellphone.csv")
+cell <- read.csv("C:\\Users\\deeni\\Downloads\\us_cellphone (1).csv")
 cellrate <- 5*cell[,2]/(1000*cell[,3]) # center on 1985 and scale by 1997-1985
 phone <- cellrate[ t + 1 ]
 t <- factor(t)
@@ -208,9 +216,9 @@ head(resids$ytil)
 
 library(foreign)
 
-descr <- read.dta("../Data/oregonhie_descriptive_vars.dta")
-prgm <- read.dta("../Data/oregonhie_stateprograms_vars.dta")
-s12 <- read.dta("../Data/oregonhie_survey12m_vars.dta")
+descr <- read.dta("C:\\Users\\deeni\\Downloads\\oregonhie_descriptive_vars.dta")
+prgm <- read.dta("C:\\Users\\deeni\\Downloads\\oregonhie_stateprograms_vars.dta")
+s12 <- read.dta("C:\\Users\\deeni\\Downloads\\oregonhie_survey12m_vars.dta")
 
 # nicely organized, one row per person
 all(s12$person_id == descr$person_id)
@@ -285,13 +293,18 @@ lin <- glm(doc_any_12m ~ selected + numhh, data=P);
 round( summary(lin)$coef["selected",],4) # 6-7% increase in prob
 
 
+## THIS DOES NOT RUN ANYMORE!!!
+
 levels(X$edu_12m)
-source("naref.R")
+
 levels(naref(X$edu_12m))
 X <- naref(X) #makes NA the base group
 
 #Continuous variables: 
   #+ set the missing values to 0 or the sample mean
+
+
+
 
 
 xnum <- X[,sapply(X,class)%in%c("numeric","integer")]

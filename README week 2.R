@@ -8,13 +8,13 @@ dim(browser)
 #show first rows of data set
 head(browser)
 
-#frequentist, to estimate the distribution of a variable, assuming normal distribution
+#frequentist, to estimate the distribution of the variablitiy of the variable, assuming normal distribution
 # here you will see the mean of the variable and the whith of the distributio
 mean(browser$spend); var(browser$spend)/1e4; sqrt(var(browser$spend)/1e4)
 #same results as in slides
 
 
-#BOOTSTRAP: this does not assume a normal distribution for the var
+#BOOTSTRAP: this does not assume a normal distribution, rather it takes many samples within the sample and there distributions and then tries to find the true distribution
 
 B <- 1000
 mub <- c()
@@ -47,15 +47,14 @@ lines(xfit, yfit, col = "black", lwd = 2)
 #EXPERIEMENT 1, what iF we do not use replacement, so if an observation is drawn, it cannot be drawn again
 rm(B, mub, samp_b, b, xfit, yfit)
 
-
 B <- 1000
 mub <- c()
 for (b in 1:1000){
-  samp_b <- sample.int(nrow(browser), replace=TRUE)
+  samp_b <- sample.int(nrow(browser), replace=FALSE)
   mub <- c(mub, mean(browser$spend[samp_b]))
 }
 sd(mub)
-# answer is 81.40998, and histogram looks the same
+# answer is 0, if you do not use replacement, there are not many samples you can take because each variable can only be used once. Therefore there is probably not enough data to run a 1000 samples. 
 
 #experiment, what happens if B <- 500
 rm(B, mub, samp_b, b, xfit, yfit)
@@ -90,9 +89,20 @@ for (b in 1:1000){
   reg_b <- glm(log(spend) ~ broadband + anychildren, data=browser[samp_b,])
   betas <- rbind(betas, coef(reg_b))
 }; head(betas, n=3)
+#head shows the first rows and the predicted values of them.
 
 #calculates the covarience between the two variables
 cov(betas[,"broadband"], betas[,"anychildren"])
+
+#EPERIMENT: different variables, only use broadband in the regression, not any children. 
+B <- 1000
+betas <- c()
+for (b in 1:1000){
+  samp_b <- sample.int(nrow(browser), replace=TRUE)
+  reg_b <- glm(log(spend) ~ broadband, data=browser[samp_b,])
+  betas <- rbind(betas, coef(reg_b))
+}; head(betas, n=3)
+# now it shows a smaller regression. It does run
 
 # to see the average coefficient of all regressions use this code. 
 #this sould be a good representative regression
@@ -107,9 +117,9 @@ k <- glm(log(spend) ~broadband + anychildren, data=browser)
 print (k)
 #(Intercept)    broadband  anychildren  
 #5.68508      0.55285      0.08216 
-#conclusion, very simular results from bootstrap
+#conclusion, very simular results from bootstrap average, only tiny different in the coeficients on the 0.001 bases
 
-#EXPERIMENT: different sample size
+#EXPERIMENT: different sample size in bootstrap regression
 B <- 1000
 betas <- c()
 sample_sizes <- c(50, 100, 200, 500)
@@ -200,4 +210,16 @@ reject
 
 # conclusion: now all except one value reject Ho, so all are seen as having significant effects. It seems hard to say what is the ideal level of q, since in q=0.1, already 5/9 variables rejected Ho.
 
+#EXPIRIMENT: in lecture, mentiod that you can also reject at level alpha/N,m but this is to coslty for significants. Lets see the differences
+pendy <- glm(log(spend) ~ . -id, data=browser)
+round(summary(spendy)$coef,2)
+pval <- summary(spendy)$coef[-1, "Pr(>|t|)"]
+pvalrank <- rank(pval)
 
+#make a variable alpha
+alpha <- 0.05
+#reject if lower then alpha/N
+reject <- ifelse(pval < alpha/nrow(browser), 2, 1) 
+reject
+
+#conclusion: only 2 variables instead of 5 are now the Ho rejected so it is more restricted now. Less variables significantly away from zero
