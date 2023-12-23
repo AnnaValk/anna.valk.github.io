@@ -1,4 +1,5 @@
 #README week 5 
+#classification uses data to predict in what label the observations belong
 rm(list = ls())
 
 library(MASS)
@@ -39,7 +40,10 @@ x <- scale(fgl[,1:9])
 # column 10 is class label, scale converts to mean 0 sd 1. is a function in R that standardizes the columns of a matrix or data frame. Standardization involves subtracting the mean and dividing by the standard deviation for each column.
 apply(x,2,sd) 
 # apply function sd to columns of x. is a versatile function in R that applies a function over the margins of an array (e.g., matrix or data frame).
+#same results
 
+
+#using the KNN method to classify the observation to check the X neirest neibors and pick the mode of these as the prediction
 # Load the class package, which contains the knn function
 library(class)
 
@@ -58,7 +62,19 @@ result_df <- data.frame(fgl$type[test], nearest1, nearest5)
 # Print the result data frame
 print(result_df)
 #this randomly shows ten observarions and there neirest neibors and what the observations are predicted to be
+# the neirest one and the neirest 5 neigbors show very simulair results
 
+#EXPERIMENT: what if we look also at neirest 10 neigbors? what about 20 
+test <- sample(1:214, 10)
+
+nearest1 <- knn(train = x[-test, ], test = x[test, ], cl = fgl$type[-test], k = 1)
+nearest5 <- knn(train = x[-test, ], test = x[test, ], cl = fgl$type[-test], k = 5)
+nearest10 <- knn(train = x[-test, ], test = x[test, ], cl = fgl$type[-test], k = 10)
+nearest20 <- knn(train = x[-test, ], test = x[test, ], cl = fgl$type[-test], k = 20)
+# Create a data frame with the true labels and predicted labels for k=1 and k=5
+result_df <- data.frame(fgl$type[test], nearest1, nearest5, nearest10, nearest20)
+print(result_df)
+#conclusion: They all run, still the results of all the test are almost the some except for 1, where nearest1 is different (probably wrong)
 
 
 
@@ -87,7 +103,7 @@ credit <- credit[,c("Default", "duration", "amount",
 
 head(credit)
 dim(credit)
-
+#same as slide
 
 
 library(gamlr)
@@ -159,80 +175,6 @@ credx <- sparse.model.matrix(Default ~ . ^ 2, data=naref(credit)); colnames(cred
   #looks like nothing changes
   
   
-  
-  # Creates thresholds for the matrix
-  rule <- 1/5  # Move this around to see how these change
-  
-  # False positive rate at 1/5 rule
-  sum((pred > rule)[default == 0]) / sum(pred > rule)
-  
-  # False negative rate at 1/5 rule
-  sum((pred < rule)[default == 1]) / sum(pred < rule)
-  
-  # Sensitivity
-  sum((pred > rule)[default == 1]) / sum(default == 1)
-  
-  # Specificity
-  sum((pred < rule)[default == 0]) / sum(default == 0)
-  
-  # Out-of-sample evaluation
-  test <- sample.int(1000, 500)
-  credhalf <- gamlr(credx[-test, ], default[-test], family = "binomial")
-  predoos <- predict(credhalf, credx[test, ], type = "response")
-  defaultoos <- default[test]
-  
-  # ROC Curve (Receiver Operating Characteristic)
-  source("roc.R")  # This might be the source of the error
-  
-  # Plot ROC Curve for in-sample
-  roc(p = pred, y = default, bty = "n", main = "in-sample")
-  
-  # Our 1/5 rule cutoff
-  points(x = 1 - mean((pred < 0.2)[default == 0]),
-         y = mean((pred > 0.2)[default == 1]),
-         cex = 1.5, pch = 20, col = 'red')
-  
-  # A standard 'max prob' (p=0.5) rule
-  points(x = 1 - mean((pred < 0.5)[default == 0]),
-         y = mean((pred > 0.5)[default == 1]),
-         cex = 1.5, pch = 20, col = 'blue')
-  
-  # Legend for in-sample ROC
-  legend("bottomright", fill = c("red", "blue"),
-         legend = c("p=1/5", "p=1/2"), bty = "n", title = "cutoff")
-  
-  # ROC Curve for out-of-sample
-  roc(p = predoos, y = defaultoos, bty = "n", main = "out-of-sample")
-  
-  # Our 1/5 rule cutoff
-  points(x = 1 - mean((predoos < 0.2)[defaultoos == 0]),
-         y = mean((predoos > 0.2)[defaultoos == 1]),
-         cex = 1.5, pch = 20, col = 'red')
-  
-  # A standard 'max prob' (p=0.5) rule
-  points(x = 1 - mean((predoos < 0.5)[defaultoos == 0]),
-         y = mean((predoos > 0.5)[defaultoos == 1]),
-         cex = 1.5, pch = 20, col = 'blue')
-  
-  # Save ROC Curve plot to a file
-  png(file = "ROCCurve.png", width = 600, height = 350)
-  
-  
-  # Close the PNG file
-  dev.off()
-  
-  # Plotting factor levels of 'Default' against 'history' in the 'credit' dataset
-  par(mai = c(.8, .8, .1, .1))
-  plot(factor(Default) ~ history, data = credit, col = c(8, 2), ylab = "Default")
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+ #The code after this for the roc curve honstly did not run, i really tried my best but it kept on giving errors..
+
   

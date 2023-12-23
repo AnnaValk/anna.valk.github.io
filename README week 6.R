@@ -4,10 +4,20 @@ oj <- read.csv("C:\\Users\\deeni\\Downloads\\oj.csv")
 #simple OLS
 basefit <- lm(log(sales) ~ log(price), data=oj)
 coef(basefit)
+#is the consumer demand elasticity
 
 #multilinear regression
 brandfit <- lm(log(sales) ~ brand + log(price), data=oj)
 coef(brandfit)
+#if we control for brand, the elasticity increases
+
+#EXPERIMENT, using brandminute.maid as reference chatagorie
+oj$brand <- factor(oj$brand)
+# Set 'brandminute.maid' as the reference category
+oj$brand <- relevel(oj$brand, ref = "minute.maid")
+brandfit <- lm(log(sales) ~ brand + log(price), data = oj)
+coef(brandfit)
+#the effect of log(price) does not change because of this
 
 
 #multiple regressions and calculations
@@ -17,6 +27,8 @@ presid <- log(oj$price) - phat
 residfit <- lm(log(sales) ~ presid, data=oj)
 coef(basefit)
 
+
+#shows how LTE works
 # Open the data and make some new variables
 data <- read.table("C:\\Users\\deeni\\Downloads\\abortion.dat", skip=1, sep="\t")
 # Assign names to the columns of the 'data' dataframe
@@ -38,7 +50,6 @@ s <- factor(data$state)
 controls <- data.frame(data[,c(3,10:17)])
 
 
-
 ## y is de-trended log crime rate, a is as described below
 #detrended log crime rates
 y <- data$y_murd
@@ -51,8 +62,33 @@ dcoef <- summary(orig <- glm(y ~ d + t + s +., data=controls) )$coef['d',][1]
 
 exp(dcoef) - 1
 
+#get a regression of as depended the log crime rate, and it uses controls to estimate this.
 
 
+
+#EXPERIMENT: what if we do not filter for the year variables. 
+rm(data)
+data <- read.table("C:\\Users\\deeni\\Downloads\\abortion.dat", skip=1, sep="\t")
+# Assign names to the columns of the 'data' dataframe
+names(data) <- c("state","year","pop","y_viol","y_prop","y_murd",
+                 "a_murd","a_viol","a_prop",'prison','police',
+                 'ur','inc','pov','afdc','gun','beer')
+# Remove rows where the 'state' column is equal to 2, 9, or 12
+data <- data[!(data$state %in% c(2,9,12)),]
+data$pop <- log(data$pop)
+t <- data$year - 85
+s <- factor(data$state)
+controls <- data.frame(data[,c(3,10:17)])
+
+y <- data$y_murd
+d <- data$a_murd
+summary(orig <- glm(y ~ d + t + s +., data=controls) )$coef['d',]
+dcoef <- summary(orig <- glm(y ~ d + t + s +., data=controls) )$coef['d',][1]
+exp(dcoef) - 1
+#conclusion: the estimates actually dont seem to change at all
+
+
+#this part shows that cellphone rates move simular to abortion and murder rates
 cell <- read.csv("C:\\Users\\deeni\\Downloads\\us_cellphone.csv")
 cellrate <- 5*cell[,2]/(1000*cell[,3]) # center on 1985 and scale by 1997-1985
 #calculates cellphone uses rates
@@ -62,31 +98,51 @@ par(mai=c(.9,.9,.1,.1))
 plot(1985:1997, tapply(d, t, mean), bty="n", xlab="year", ylab="rate", pch=21, bg=2)
 points(1985:1997, cellrate, bg=4, pch=21)
 legend("topleft", fill=c(2,4), legend=c("abortions","cellphones"), bty="n")
-#there is a super clear trend that is almost identical
+#there is a super clear trend that is almost identical between abortions and cellphones
 
-#now put the relation into a regression
+#EXPERIMENT: how to make nice plots with different collors
+abortion_color <- "yellow"
+cellphone_color <- "purple"
+par(mai=c(.9,.9,.1,.1))
+plot(1985:1997, tapply(d, t, mean), bty="n", xlab="year", ylab="rate", pch=21, bg=abortion_color)
+points(1985:1997, cellrate, bg=cellphone_color, pch=21)
+legend("topleft", fill=c(abortion_color, cellphone_color), legend=c("abortions", "cellphones"), bty="n")
+#it works, is nice to use for thesis
+
+
+#now put the relation into a regression, of abortion and cellphone
 phone <- cellrate[ t + 1 ]
 tech <- summary(glm(y ~ phone + t + s +., data=controls))$coef['phone',]
 phonecoef <- tech[1]
 exp(phonecoef) - 1
+#has a big effect on murder rate.
 
-#logistic regression with interaction terms
+#EXPERIMENT: How does this effect change if you dont use the control variables. 
+phone <- cellrate[ t + 1 ]
+tech <- summary(glm(y ~ phone, data=controls))$coef['phone',]
+phonecoef <- tech[1]
+exp(phonecoef) - 1
+#effect is a lot smaller, does this say something about robustness? 
+
+
+#logistic regression with interaction terms and quadretic terms 
 t <- factor(t)
 interact <- glm(y ~ d + t + phone*s + .^2, data=controls)
 summary(interact)$coef["d",]
-#almost same number as above
+#almost same number as above, no significant difference
 
 
-
-
-# Revisiting the abortion example
-
+#Now the goal is the do the same regression but then using the LASSO LTE methods,
+#Lasso LTE basically first looks at variables effecting treatment, and then holds those constant
+#then it optimizes regression on Y
 library(gamlr)
-## refactor state to have NA reference level
+## This creates some factors
 sna <- factor(s, levels=c(NA,levels(s)), exclude=NULL)
 x <- sparse.model.matrix( ~ t + phone*sna + .^2, data=controls)[,-1]
 dim(x)
-## naive lasso regression
+
+
+## naive lasso regression (idk why Naive)
 naive <- cv.gamlr(cbind(d,x),y); head(coef(naive))
 coef(naive)["d",] 
 
@@ -99,52 +155,115 @@ par(mai=c(.9,.9,.1,.1))
 plot(dhat,d,bty="n",pch=21,bg=8, cex=.8, yaxt="n")
 axis(2, at=c(0,1,2,3)) 
 ## little to resemble an experiment here...
+#it is naive because it is a very simple approach
+#stil looks like a strong relation in the plot. 
 
-
-## IS R^2?
+## what is in sample R2?
 cor(drop(dhat),d)^2
 ## Note: IS R2 indicates how much independent signal you have for estimating 
 coef(summary( glm( y ~ d + dhat) ))
 # re-run lasso, with this (2nd column) included unpenalized (free=2)
 causal <- cv.gamlr(cbind(d,dhat,x),y,free=2,lmr=1e-3)
 coef(causal, select="min")["d",] 
-# AICc says abortion rate has no causal effect on crime.
+
+
+#WIERD: in the slides it shows a 0, so there is no causal effect, but i got a 0.113?
+#does that mean that AIC claims causal effect? I think i might have done an expiriment effecting these results
 
 
 
+#this code performs a LTE model 
+#using a combination of lasso regularization and logistic regression, 
+#incorporating cross-validation and confidence interval estimation.
+
+#loading data
 library(gamlr)
 data(hockey)
 head(goal, n=2)
+#filtering the data
 player[1:2, 2:7] #players on ice. +1 is home players. 0 is off ice. 
 team[1, 2:6] #Sparse Matrix with indicators for each team*season interaction: +1 for home team, -1 for away team. 
 config[5:6, 2:7] #Special teams info. For example, S5v4 is a 5 on 4 powerplay, +1 if it is for the home-team and -1 for the away team.
 
-
+#making a matric
 x <- cbind(config,team,player)
 y <- goal$homegoal
+#creating folds for cross validatation, so it makes on -k and test on k
 fold <- sample.int(2,nrow(x),replace=TRUE) 
 head(fold)
+#Lasso
 nhlprereg <- gamlr(x[fold==1,], y[fold==1],
                    free=1:(ncol(config)+ncol(team)), 
                    family="binomial", standardize=FALSE)
+#Fitting a regression with non zero coeficients of the best model, which has been desided by cross validation on the lasso models. 
+
+selected <- which(coef(nhlprereg)[-1,] != 0)
+xnotzero <- as.data.frame(as.matrix(x[,selected]))
+nhlmle <- glm( y ~ ., data=xnotzero, 
+               subset=which(fold==2), family=binomial )
+#showing the model made
+summary(nhlmle)
+
+#confidence interval
+x[1,x[1,]!=0] #check first observation for players on the ice
+fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$fit; fit
+se.fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$se.fit; se.fit
+CI = fit + c(-2,2)*se.fit
+CI #90% confidence interval for probability that Edmonton scored the goal is 
+#0.3050716 0.5682728, so it is statistically significant effect
+
+#EXPERIMENT: what if we do cross validation if replacement = false
+fold <- sample.int(2,nrow(x),replace=FALSE) 
+head(fold)
+#Lasso
+nhlprereg <- gamlr(x[fold==1,], y[fold==1],
+                   free=1:(ncol(config)+ncol(team)), 
+                   family="binomial", standardize=FALSE)
+#Fitting a regression with non zero coeficients of the best model, which has been desided by cross validation on the lasso models. 
+
 selected <- which(coef(nhlprereg)[-1,] != 0)
 xnotzero <- as.data.frame(as.matrix(x[,selected]))
 nhlmle <- glm( y ~ ., data=xnotzero, 
                subset=which(fold==2), family=binomial )
 
 summary(nhlmle)
-
 x[1,x[1,]!=0] #check first observation for players on the ice
 fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$fit; fit
 se.fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$se.fit; se.fit
 CI = fit + c(-2,2)*se.fit
 CI #90% confidence interval for probability that Edmonton scored the goal is 
+#conclusion: Error in sample.int(2, nrow(x), replace = FALSE) : 
+#cannot take a sample larger than the population when 'replace = FALSE'
+# so if there is no replacement, the sample is larger then the population so it does not work
 
 
+#EXPERIMENT: what if we use standardize=TRUE
+fold <- sample.int(2,nrow(x),replace=TRUE) 
+head(fold)
+#Lasso
+nhlprereg <- gamlr(x[fold==1,], y[fold==1],
+                   free=1:(ncol(config)+ncol(team)), 
+                   family="binomial", standardize=TRUE)
+#Fitting a regression with non zero coeficients of the best model, which has been desided by cross validation on the lasso models. 
 
+selected <- which(coef(nhlprereg)[-1,] != 0)
+xnotzero <- as.data.frame(as.matrix(x[,selected]))
+nhlmle <- glm( y ~ ., data=xnotzero, 
+               subset=which(fold==2), family=binomial )
+
+summary(nhlmle)
+x[1,x[1,]!=0] #check first observation for players on the ice
+fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$fit; fit
+se.fit <- predict(nhlmle, xnotzero[1,,drop=FALSE], type="response", se.fit=TRUE)$se.fit; se.fit
+CI = fit + c(-2,2)*se.fit
+CI #90% confidence interval for probability that Edmonton scored the goal is 
+#conclusion: This runs a lot longer then the other one. 
+#My R actually closed during this so i will leave it at that..
 
 
 #part 2
+#This part uses the orthogonal ML, so that is basically cross validation but then for causal interverence. 
+#first preparing the data
 library(Matrix)
 data <- read.table("C:\\Users\\deeni\\Downloads\\abortion (1).dat", skip=1, sep="\t")
 names(data) <- c("state","year","pop","y_viol","y_prop","y_murd",
@@ -158,11 +277,14 @@ s <- factor(data$state) ## states are numbered alphabetically
 controls <- data.frame(data[,c(3,10:17)])
 ## y is de-trended log crime rate, a is as described below
 ## note we also have violent and property crime versions
+#this defines outcome and treatment variable
 y <- data$y_murd
 d <- data$a_murd
+#how to calculate cellphone rates 
 cell <- read.csv("C:\\Users\\deeni\\Downloads\\us_cellphone (1).csv")
 cellrate <- 5*cell[,2]/(1000*cell[,3]) # center on 1985 and scale by 1997-1985
 phone <- cellrate[ t + 1 ]
+#setting up the matrix
 t <- factor(t)
 sna <- factor(s, levels=c(NA,levels(s)), exclude=NULL)
 x <- sparse.model.matrix( ~ t + phone*sna + .^2, data=controls)[,-1]
@@ -170,10 +292,12 @@ x <- sparse.model.matrix( ~ t + phone*sna + .^2, data=controls)[,-1]
 library(AER)
 library(gamlr)
 
+#this defines functions of regularization
 dreg <- function(x,d){ cv.gamlr(x, d, lmr=1e-5) }
 yreg <- function(x,y){ cv.gamlr(x, y, lmr=1e-5) }
 
-# Orthogonal ML R Function
+
+# Orthogonal ML R Function, actually using the orthogonal ML
 
 orthoLTE <- function(x, d, y, dreg, yreg, nfold=2)
 {
@@ -203,17 +327,41 @@ orthoLTE <- function(x, d, y, dreg, yreg, nfold=2)
   return( list(gam=gam, se=se, dtil=dtil, ytil=ytil) )
 }
 
-# OrthoML and effect of abortion access on crime
 
+
+# OrthoML and effect of abortion access on crime
+#the actual regression using the folds
 resids <- orthoLTE( x=x, d=d, y=y, 
                     dreg=dreg, yreg=yreg, nfold=5) 
+#showing the outcomes
+head(resids$dtil)
+head(resids$ytil)
+#calculating the P value of the regression
+2*pnorm(-abs(resids$gam)/resids$se) #p-value supports no effect of abortion access on crime
+#WIERD: I actually have very different results then the slides
+#ofcourse there is randomization, but these numbers are wayyy different, even signs are changing
+#means that it might not be stable, or i did something wrong
+#> head(resids$dtil)
+#[1]  0.0408149196  0.0000320417  0.0078787082  0.0055741836  0.0054012168
+#[6] -0.0032739624
+#> head(resids$ytil)
+#[1] -0.005454531 -0.094294933 -0.097393072  0.037117589  0.042902639
+#[6]  0.158536660
+#> 2*pnorm(-abs(resids$gam)/resids$se) #p-value supports no effect of abortion access on crime
+#dtil 
+#0.109359
+
+
+#EXPERIMENT: the original used 2 folds, what if we use more? 5 folds
+resids <- orthoLTE(x=x, d=d, y=y, dreg=dreg, yreg=yreg, nfold=5)
 head(resids$dtil)
 head(resids$ytil)
 2*pnorm(-abs(resids$gam)/resids$se) #p-value supports no effect of abortion access on crime
+#conclusion: the results change masively, but my run was also very different from the slides, so might just be sensitive in general
 
 
 
-
+#Doing the HTE, which has treatment effect that can be different for different people
 library(foreign)
 
 descr <- read.dta("C:\\Users\\deeni\\Downloads\\oregonhie_descriptive_vars.dta")
@@ -283,124 +431,12 @@ yvar <- tapply(P$doc_any_12m, P$selected, var)
 ( seATE = sqrt(sum(yvar/nsel)) )
 
 ATE + c(-2,2)*seATE
-
-
-
+#same result as slide, so it worked. 
   
   #Control for number of household members because randomization was imperfect. Randomized across households. If your household was chosen, then everyone in your household became eligible. 
 
 lin <- glm(doc_any_12m ~ selected + numhh, data=P);
 round( summary(lin)$coef["selected",],4) # 6-7% increase in prob
-
-
-## THIS DOES NOT RUN ANYMORE!!!
-
-levels(X$edu_12m)
-
-levels(naref(X$edu_12m))
-X <- naref(X) #makes NA the base group
-
-#Continuous variables: 
-  #+ set the missing values to 0 or the sample mean
-
-
-
-
-
-xnum <- X[,sapply(X,class)%in%c("numeric","integer")]
-xnum[66:70,]
-colSums(is.na(xnum))
-# flag missing
-xnumna <- apply(is.na(xnum), 2, as.numeric)
-xnumna[66:70,]
-
-# impute the missing values
-mzimpute <- function(v){ 
-  if(mean(v==0,na.rm=TRUE) > 0.5) impt <- 0
-  else impt <- mean(v, na.rm=TRUE)
-  v[is.na(v)] <- impt
-  return(v) }
-xnum <- apply(xnum, 2,  mzimpute)
-xnum[66:70,]
-
-# replace/add the variables in new data frame 
-for(v in colnames(xnum)){
-  X[,v] <- xnum[,v]
-  X[,paste(v,"NA", sep=".")] <- xnumna[,v] }
-X[144:147,]
-
-  
-  #After filling in the missings, put everything into a sparse model matrix. Add numhh to control for imperfect randomization.
-
-xhte <- sparse.model.matrix(~., data=cbind(numhh=P$numhh, X))[,-1]
-xhte[1:2,1:4]
-dim(xhte)
-
-
-#Now we are ready to deal with heterogeneous treatment effects. 
-
-
-dxhte <- P$selected*xhte
-colnames(dxhte) <- paste("d",colnames(xhte), sep=".")
-htedesign <- cbind(xhte,d=P$selected,dxhte)
-# include the numhh controls and baseline treatment without penalty 
-htefit <- gamlr(x=htedesign, y=P$doc_any_12m, free=c("numhh2","numhh3+","d"))
-gam <- coef(htefit)[-(1:(ncol(xhte)+1)), ]
-round(sort(gam)[1:6],4)
-round(sort(gam, decreasing=TRUE)[1:6],4)
-
-
-load("../Data/dominicks-beer.rda")
-head(wber)
-wber = wber[sample(nrow(wber), 100000), ]
-head(upc)
-dim(upc)
-wber$lp <- log(12*wber$PRICE/upc[wber$UPC,"OZ"]) #ln price per 12 ounces
-
-coef( margfit <- lm(log(MOVE) ~ lp, data=wber[,]) )
-#10% increase in price decreases  quantity sold by 6%
-#ATE
-
-wber$s <- factor(wber$STORE); wber$u <- factor(wber$UPC); wber$w <- factor(wber$WEEK)
-xs <- sparse.model.matrix( ~ s-1, data=wber); xu <- sparse.model.matrix( ~ u-1, data=wber); xw <- sparse.model.matrix( ~ w-1, data=wber)
-# parse the item description text as a bag o' words
-library(tm)
-descr <- Corpus(VectorSource(as.character(upc$DESCRIP)))
-descr <- DocumentTermMatrix(descr)
-descr <- sparseMatrix(i=descr$i,j=descr$j,x=as.numeric(descr$v>0), # convert from stm to Matrix format
-                      dims=dim(descr),dimnames=list(rownames(upc),colnames(descr)))
-descr[1:5,1:6]
-descr[287,descr[287,]!=0]
-controls <- cbind(xs, xu, xw, descr[wber$UPC,]) 
-dim(controls)
-
-
-# naive lasso
-naivefit <- gamlr(x=cbind(lp=wber$lp,controls)[,], y=log(wber$MOVE), free=1, standardize=FALSE)
-print( coef(naivefit)[1:2,] )
-# orthogonal ML 
-resids <- orthoLTE( x=controls, d=wber$lp, y=log(wber$MOVE), dreg=dreg, yreg=yreg, nfold=5)
-
-# interact items and text with price
-#lpxu <- xu*wber$lp
-#colnames(lpxu) <- paste("lp",colnames(lpxu),sep="")
-# create our interaction matrix
-xhte <- cbind(BASELINE=1,descr[wber$UPC,])
-d <- xhte*wber$lp
-colnames(d) <- paste("lp",colnames(d),sep=":")
-
-eachbeer <- xhte[match(rownames(upc),wber$UPC),]
-rownames(eachbeer) <- rownames(upc)
-# fullhte
-lnwberMOVE <- log(wber[['MOVE']])
-fullhte <- gamlr(x=cbind(d,controls), y=lnwberMOVE, lambda.start=0)
-#gamfull <- coef(fullhte)[2:(ncol(lpxu)+1),]
-gamfull <- drop(eachbeer%*%coef(fullhte)[2:(ncol(d)+1),])
-
-coef(fullhte)
-
-
-hist(gamfull, main="", xlab="elasticity", col="darkgrey", freq=FALSE)
 
 
 

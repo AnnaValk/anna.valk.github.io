@@ -1,4 +1,4 @@
-#read me week4 
+#read me week 4 
 rm(list = ls())
 SC <- read.csv("C:\\Users\\deeni\\Downloads\\semiconductor.csv")
 full <- glm(FAIL ~ ., data=SC, family=binomial)

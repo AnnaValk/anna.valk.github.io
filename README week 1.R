@@ -1,4 +1,4 @@
-#README WEEK1
+#README WEEK 1
  
 CEO_Diary <- read.csv("C:\\Users\\deeni\\Downloads\\survey_response_data (1).csv")
 

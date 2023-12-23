@@ -1,4 +1,4 @@
-#README WEEK2
+#README WEEK 2
 rm(list = ls())
 
 browser <- read.csv("C:\\Users\\deeni\\Downloads\\web-browsers.csv")
